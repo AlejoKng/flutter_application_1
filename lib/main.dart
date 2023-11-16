@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/firebase_options.dart';
@@ -13,23 +14,19 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color.fromARGB(220, 221, 235, 253)),
-          useMaterial3: true,
+      debugShowCheckedModeBanner: false,
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromARGB(220, 221, 235, 253),
         ),
-        home: const Stack(
-          children: [
-            //agregar imagen de fondo
-            MyHomePage(title: 'Flutter Demo Home Page'),
-          ],
-        ));
+        useMaterial3: true,
+      ),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    );
   }
 }
 
@@ -42,11 +39,102 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final TextEditingController usuarioController = TextEditingController();
+  final TextEditingController contrasenaController = TextEditingController();
+
+  Future<void> _handleLogIn() async {
+    try {
+      // Verificar que los campos no estén vacíos
+      if (usuarioController.text.isEmpty || contrasenaController.text.isEmpty) {
+        // Mostrar ventana emergente con error
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Error'),
+            content: const Text('Por favor, completa todos los campos.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // Filtrar en la base de datos
+      QuerySnapshot<Map<String, dynamic>> querySnapshot =
+          await FirebaseFirestore.instance
+              .collection('Users')
+              .where('correo', isEqualTo: usuarioController.text)
+              .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        // El correo no existe en la base de datos
+        // ignore: use_build_context_synchronously
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Error'),
+            content: const Text('Correo no encontrado.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // Verificar la contraseña
+      DocumentSnapshot<Map<String, dynamic>> userDocument =
+          querySnapshot.docs.first;
+      String storedPassword = userDocument['contraseña'];
+
+      if (contrasenaController.text == storedPassword) {
+        // Contraseña correcta
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PrincipalContactos(),
+          ),
+        );
+      } else {
+        // Contraseña incorrecta
+        // ignore: use_build_context_synchronously
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Error'),
+            content: const Text('Contraseña incorrecta.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error en el log in: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
-    double logoSize =
-        screenHeight * 0.25; // Tamaño del logo: 20% del alto de la pantalla
+    double logoSize = screenHeight * 0.25;
 
     return Scaffold(
       appBar: AppBar(
@@ -71,26 +159,22 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
             TextFormField(
+              controller: usuarioController,
               decoration:
                   const InputDecoration(labelText: "Ingresa tu usuario"),
             ),
             TextFormField(
+              controller: contrasenaController,
               decoration: const InputDecoration(labelText: "Contraseña"),
             ),
             const SizedBox(
-                height:
-                    20.0), // Agrega un espacio entre los campos de texto y los botones
+              height: 20.0,
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
                 ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const PrincipalContactos()),
-                    );
-                  },
+                  onPressed: _handleLogIn,
                   child: const Text('Log In'),
                 ),
                 ElevatedButton(

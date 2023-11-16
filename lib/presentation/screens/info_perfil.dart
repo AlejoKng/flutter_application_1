@@ -1,24 +1,33 @@
-// ignore_for_file: file_names, unused_local_variable
+// ignore_for_file: file_names, unused_local_variable, use_build_context_synchronously, library_private_types_in_public_api
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_1/application/services/crear_usuario.dart';
 import 'package:flutter_application_1/data/file_storage.dart';
-import 'package:flutter_application_1/presentation/screens/foto_perfil.dart';
+import 'package:flutter_application_1/main.dart';
+import 'package:gallery_saver/gallery_saver.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
 
 class InfoPerfil extends StatefulWidget {
   InfoPerfil({Key? key}) : super(key: key);
   final FileStorage fileStorageExample = FileStorage();
   @override
-  // ignore: library_private_types_in_public_api
   _InfoPerfilState createState() => _InfoPerfilState();
 }
 
 class _InfoPerfilState extends State<InfoPerfil> {
-  File? _image; // Variable para almacenar la imagen seleccionada
+  File? _image;
+  TextEditingController nombreController = TextEditingController();
+  TextEditingController correoController = TextEditingController();
+  TextEditingController identificacionController = TextEditingController();
+  TextEditingController numeroController = TextEditingController();
+  TextEditingController contrasenaController = TextEditingController();
+  CrearUsuario creausuario = CrearUsuario();
 
-  //Abrir la cámara y tomar una foto
   Future<void> _takePicture() async {
     final pickedFile =
         await ImagePicker().pickImage(source: ImageSource.camera);
@@ -27,63 +36,67 @@ class _InfoPerfilState extends State<InfoPerfil> {
       setState(() {
         _image = File(pickedFile.path);
       });
-
-      // Mostrar un diálogo con opciones de tomar de nuevo o elegir la foto
-      // ignore: use_build_context_synchronously
-      await showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('¿Qué deseas hacer?'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(); // Cerrar el diálogo
-                },
-                child: const Text('Tomar de nuevo'),
-              ),
-              TextButton(
-                onPressed: () {
-                  _saveImage(_image!);
-                  Navigator.of(context).pop(); // Cerrar el diálogo
-                },
-                child: const Text('Elegir esta'),
-              ),
-            ],
-          );
-        },
-      );
+      await _saveImage(_image!);
     }
   }
 
-  Future<void> _saveImage(File image) async {
-    final appDocumentsDir = await getApplicationDocumentsDirectory();
+  Future<String> _saveImage(File image) async {
+    try {
+      final appDocumentsDir = await getApplicationDocumentsDirectory();
+      final now = DateTime.now();
+      final formattedDate = DateFormat('yyyyMMdd_HHmmss').format(now);
 
-    // Renombrar la foto existente a "perfil1.png" si existe
-    final String existingPath = '${appDocumentsDir.path}/fotoperfil_actual.png';
-    final File existingImage = File(existingPath);
+      final String newFileName = 'fotoperfil_$formattedDate.png';
+      final String newFilePath = '${appDocumentsDir.path}/$newFileName';
+      await image.copy(newFilePath);
 
-    if (await existingImage.exists()) {
-      try {
-        await existingImage.rename('${appDocumentsDir.path}/perfil1.png');
-      } catch (e) {
-        print('Error al renombrar el archivo existente: $e');
-      }
+      await GallerySaver.saveImage(newFilePath);
+
+      return newFilePath;
+    } catch (e) {
+      print('Error al guardar la imagen: $e');
+      return '';
     }
-
-    // Guardar la nueva imagen en el directorio de documentos
-    fotoperfilvariable = '${appDocumentsDir.path}/fotoperfil_actual.png';
-    print(fotoperfilvariable);
-    final File newPerfil = await image.copy(fotoperfilvariable);
   }
 
-  //Seleccionar una imagen de la galería
   Future<void> _pickImage() async {
     final image = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (image != null) {
       setState(() {
         _image = File(image.path);
       });
+    }
+  }
+
+  Future<void> _saveUserData() async {
+    try {
+      User? newUser = await creausuario.signUp(
+          correoController.text.trim(), contrasenaController.text.trim());
+      await FirebaseFirestore.instance.collection('Users').doc().set({
+        'nombre': nombreController.text.trim(),
+        'correo': correoController.text.trim(),
+        'cc': identificacionController.text.trim(),
+        'contraseña': contrasenaController.text.trim(),
+        'numero': numeroController.text.trim(),
+        // Puedes añadir más campos según tus necesidades
+      });
+
+      print('Usuario registrado y datos guardados en Firestore');
+
+      // Después de guardar los datos, navegar a la página principal y eliminar los valores de los campos
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MyHomePage(title: '')),
+      );
+
+      // Limpiar los valores de los campos
+      nombreController.clear();
+      correoController.clear();
+      identificacionController.clear();
+      numeroController.clear();
+      contrasenaController.clear();
+    } catch (e) {
+      print('Error al registrar el usuario: $e');
     }
   }
 
@@ -100,7 +113,7 @@ class _InfoPerfilState extends State<InfoPerfil> {
           children: <Widget>[
             _image == null
                 ? Image.asset(
-                    fotoperfilvariable,
+                    'assets/icons/userphoto-icon.png',
                     width: 150.0,
                     height: 150.0,
                     fit: BoxFit.cover,
@@ -113,7 +126,6 @@ class _InfoPerfilState extends State<InfoPerfil> {
                   ),
             ElevatedButton(
               onPressed: () {
-                // Mostrar un diálogo para elegir entre tomar una foto o seleccionar de la galería
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
@@ -123,11 +135,6 @@ class _InfoPerfilState extends State<InfoPerfil> {
                         onPressed: () {
                           Navigator.pop(context);
                           _takePicture();
-                          //Navigator.push(
-                          //  context,
-                          //  MaterialPageRoute(
-                          //      builder: (context) => const CameraScreen()),
-                          //);
                         },
                         child: const Text('Tomar Foto'),
                       ),
@@ -145,20 +152,24 @@ class _InfoPerfilState extends State<InfoPerfil> {
               child: const Text('Cambiar Imagen'),
             ),
             TextFormField(
+              controller: nombreController,
               decoration: const InputDecoration(labelText: "Nombre Completo"),
             ),
             TextFormField(
+              controller: correoController,
               decoration: const InputDecoration(labelText: "Correo"),
             ),
             TextFormField(
+              controller: identificacionController,
               decoration: const InputDecoration(labelText: "Identificación"),
             ),
             TextFormField(
-              decoration: const InputDecoration(labelText: "contraseña"),
+              controller: numeroController,
+              decoration: const InputDecoration(labelText: "numero"),
             ),
             TextFormField(
-              decoration:
-                  const InputDecoration(labelText: "confirmacion contraseña"),
+              controller: contrasenaController,
+              decoration: const InputDecoration(labelText: "Contraseña"),
             ),
             const SizedBox(height: 8.0),
             Row(
@@ -166,7 +177,8 @@ class _InfoPerfilState extends State<InfoPerfil> {
               children: <Widget>[
                 ElevatedButton(
                   onPressed: () {
-                    // Agrega aquí la lógica para guardar la información del usuario
+                    _saveUserData();
+                    print('Las contraseñas no coinciden');
                   },
                   child: const Text('Guardar'),
                 ),

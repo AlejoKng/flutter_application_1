@@ -1,20 +1,45 @@
-// ignore_for_file: file_names
-
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/presentation/screens/principal_contactos.dart';
 import 'package:flutter_application_1/presentation/screens/principal_whatsApp.dart';
 import 'package:flutter_application_1/presentation/screens/pagina_documentos.dart';
 
-class PaginaActividades extends StatelessWidget {
-  const PaginaActividades({super.key});
+class PaginaActividades extends StatefulWidget {
+  const PaginaActividades({Key? key}) : super(key: key);
 
-  get screenHeight => null;
-  get screenWidth => null;
+  @override
+  _PaginaActividadesState createState() => _PaginaActividadesState();
+}
+
+class _PaginaActividadesState extends State<PaginaActividades> {
+  List<Actividad> actividades = []; // Lista de actividades
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Inicializar el vector de actividades con dos actividades diferentes
+    Actividad actividad1 = Actividad(
+      dia: 10,
+      mes: 'Nov',
+      nota: 'Reunión de trabajo',
+      hora: '15:00',
+    );
+
+    Actividad actividad2 = Actividad(
+      dia: 15,
+      mes: 'Nov',
+      nota: 'Entrenamiento',
+      hora: '18:30',
+    );
+
+    setState(() {
+      actividades = [actividad1, actividad2];
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-
     double iconSizeButt = screenWidth * 0.2;
     double iconSizePerf = screenWidth * 0.133;
 
@@ -50,30 +75,35 @@ class PaginaActividades extends StatelessWidget {
           // División central para mostrar contenido
           Expanded(
             child: Container(
-              color: const Color.fromARGB(
-                  255, 255, 255, 255), // Color de fondo de la división central
-              child: const Center(),
+              color: const Color.fromARGB(255, 255, 255, 255),
+              child: ListView.builder(
+                itemCount: actividades.length,
+                itemBuilder: (context, index) {
+                  Actividad actividad = actividades[index];
+                  return ListTile(
+                    title: Text('${actividad.dia} ${actividad.mes}'),
+                    subtitle: Text(actividad.nota),
+                    trailing: Text(actividad.hora),
+                  );
+                },
+              ),
             ),
           ),
           // División inferior para botones de imagen
           Container(
-            color: const Color.fromARGB(
-                255, 255, 255, 255), // Color de fondo de la división inferior
-            height: 100, // Altura de la división inferior
+            color: const Color.fromARGB(255, 255, 255, 255),
+            height: 100,
             child: Center(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: <Widget>[
-                  // Botón 1
                   IconButton(
                     icon: Image.asset(
                       'assets/icons/contactos2.png',
                       width: iconSizeButt,
                       height: iconSizeButt,
                     ),
-                    iconSize: iconSizeButt,
                     onPressed: () {
-                      // Acción para el botón 1
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -81,16 +111,13 @@ class PaginaActividades extends StatelessWidget {
                       );
                     },
                   ),
-                  // Botón 2
                   IconButton(
                     icon: Image.asset(
                       'assets/icons/watsapp2.png',
                       width: iconSizeButt,
                       height: iconSizeButt,
                     ),
-                    iconSize: iconSizeButt,
                     onPressed: () {
-                      // Acción para el botón 2
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -98,7 +125,6 @@ class PaginaActividades extends StatelessWidget {
                       );
                     },
                   ),
-                  // Botón 3
                   IconButton(
                     icon: Image.asset(
                       'assets/icons/seg1.png',
@@ -109,21 +135,25 @@ class PaginaActividades extends StatelessWidget {
                       // Acción para el botón 3
                     },
                   ),
-                  // Botón 4
                   IconButton(
                     icon: Image.asset(
                       'assets/icons/docs2.png',
                       width: iconSizeButt,
                       height: iconSizeButt,
                     ),
-                    iconSize: iconSizeButt,
                     onPressed: () {
-                      // Acción para el botón 4
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                             builder: (context) => const PaginaDocumentos()),
                       );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () {
+                      // Lógica para agregar un recordatorio
+                      _mostrarVentanaEmergente();
                     },
                   ),
                 ],
@@ -134,4 +164,126 @@ class PaginaActividades extends StatelessWidget {
       ),
     );
   }
+
+  // Función para mostrar la ventana emergente de agregar recordatorio
+  Future<void> _mostrarVentanaEmergente() async {
+    DateTime fechaSeleccionada = DateTime.now();
+    TimeOfDay horaSeleccionada = TimeOfDay.now();
+    String nota = '';
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Agregar Recordatorio'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Campo de fecha con calendario predeterminado
+              ElevatedButton(
+                onPressed: () async {
+                  DateTime? fecha = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime(2101),
+                  );
+                  if (fecha != null) {
+                    setState(() {
+                      fechaSeleccionada = fecha;
+                    });
+                  }
+                },
+                child: const Text('Seleccionar Fecha'),
+              ),
+              const SizedBox(height: 8),
+              // Campo de hora
+              ElevatedButton(
+                onPressed: () async {
+                  TimeOfDay? hora = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (hora != null) {
+                    setState(() {
+                      horaSeleccionada = hora;
+                    });
+                  }
+                },
+                child: const Text('Seleccionar Hora'),
+              ),
+              const SizedBox(height: 8),
+              // Campo de nota
+              TextField(
+                onChanged: (value) {
+                  nota = value;
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Nota o Recordatorio',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Lógica para guardar el recordatorio en la lista
+                Actividad nuevaActividad = Actividad(
+                  dia: fechaSeleccionada.day,
+                  mes: _obtenerNombreMes(fechaSeleccionada.month),
+                  nota: nota,
+                  hora: horaSeleccionada.format(context),
+                );
+                setState(() {
+                  actividades.add(nuevaActividad);
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Función para obtener el nombre del mes
+  String _obtenerNombreMes(int numeroMes) {
+    const nombresMeses = [
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic'
+    ];
+    return nombresMeses[numeroMes - 1];
+  }
+}
+
+// Clase para representar una actividad o recordatorio
+class Actividad {
+  final int dia;
+  final String mes;
+  final String nota;
+  final String hora;
+
+  Actividad({
+    required this.dia,
+    required this.mes,
+    required this.nota,
+    required this.hora,
+  });
 }
